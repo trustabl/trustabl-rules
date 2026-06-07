@@ -1,0 +1,23 @@
+name: compat-gate
+
+# Production-readiness gate: a rules change must not crash any supported deployed
+# binary. For every release descriptor under compat/*.json, fail the PR if a rule
+# uses a vocabulary value (e.g. a `language`) that release does not understand and
+# hard-fails on. This is what would have caught the v0.1.3 break at PR time.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  compat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install PyYAML
+        run: pip install pyyaml
+      - name: Check rule compatibility against supported releases
+        run: python3 tools/check_rule_compat.py

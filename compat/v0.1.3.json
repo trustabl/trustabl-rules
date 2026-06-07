@@ -1,0 +1,7 @@
+{
+  "version": "v0.1.3",
+  "schema_version": 9,
+  "hard_fail_dimensions": ["language"],
+  "languages": ["python", "typescript", "javascript", "go"],
+  "_note": "Hand-authored: v0.1.3 predates `trustabl capabilities`. Its loader is forward-compatible for scope / applies_to / category / predicate (it skips a rule it cannot evaluate) but HARD-FAILS the entire load on an unknown `language` value — the bug fixed in the engine's forward-compat language PR. The compat gate enforces ONLY the dimensions in hard_fail_dimensions, so for v0.1.3 only `languages` must be exhaustive here. Newer releases generate their descriptor with `trustabl capabilities > compat/<tag>.json` (fully forward-compatible builds report hard_fail_dimensions: [])."
+}
