@@ -1,0 +1,46 @@
+framework:
+  id: pci_dss
+  name: "PCI DSS"
+  version: "4.0"
+  authority: pci
+  source_provenance: editorial
+  reviewed_by: "IJB"
+  reviewed_at: "2026-06-27"
+  catalog_version: "2026.06.1"
+mappings:
+  - rule_id: "CSDK-101"
+    controls:
+      - id: "Req.7"
+        tier: in_scope
+        relation: relevant
+        note: "Bash access on a subagent violates the least-privilege access requirement."
+  - rule_id: "CSDK-102"
+    controls:
+      - id: "Req.7"
+        tier: partial
+        relation: relevant
+        note: "Unrestricted web-search grant exceeds minimum necessary access."
+  - rule_id: "CSDK-104"
+    controls:
+      - id: "Req.7"
+        tier: in_scope
+        relation: relevant
+        note: "Filesystem-write built-ins on a subagent breach least-privilege access."
+  - rule_id: "CSDK-202"
+    controls:
+      - id: "Req.7"
+        tier: in_scope
+        relation: relevant
+        note: "Session-level permission bypass removes access-restriction enforcement."
+  - rule_id: "CSDK-203"
+    controls:
+      - id: "Req.6"
+        tier: partial
+        relation: relevant
+        note: "Missing agent-guidance doc is a gap in secure development documentation."
+  - rule_id: "CSDK-201"
+    controls:
+      - id: "Req.8"
+        tier: in_scope
+        relation: relevant
+        note: "Project-wide bypass of approvals undermines user identification controls."
