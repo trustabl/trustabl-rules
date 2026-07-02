@@ -181,8 +181,10 @@ product.
 ## What this repo is NOT
 
 - Not a place for ad-hoc YAML files. Every `.yaml` file here (except the
-  top-level `manifest.yaml`) is loaded as a policy by the engine. Don't drop
-  notes, examples, or work-in-progress `.yaml` files inline — they will fail
-  the loader. Markdown docs (`README.md`, `CLAUDE.md`, per-pack READMEs) are
-  fine; the loader only reads `.yaml`.
+  top-level `manifest.yaml` and the `mappings/` subtree — compliance-framework
+  crosswalks keyed by rule ID, which the loader skips as reporting metadata)
+  is loaded as a policy by the engine. Don't drop notes, examples, or
+  work-in-progress `.yaml` files inline — they will fail the loader. Markdown
+  docs (`README.md`, `CLAUDE.md`, per-pack READMEs) are fine; the loader only
+  reads `.yaml`.
 - Not the home of the schema or predicates. Those live in the engine repo.
