@@ -181,9 +181,14 @@ product.
 ## What this repo is NOT
 
 - Not a place for ad-hoc YAML files. Every `.yaml` file here (except the
-  top-level `manifest.yaml` and the `mappings/` subtree — compliance-framework
-  crosswalks keyed by rule ID, which the loader skips as reporting metadata)
-  is loaded as a policy by the engine. Don't drop notes, examples, or
+  top-level `manifest.yaml`) is loaded as a policy by the engine. The
+  `mappings/` subtree — compliance-framework crosswalks keyed by rule ID — is
+  reporting metadata, NOT policies, and is deliberately shipped as `.yml`:
+  current engine loaders skip the `mappings/` directory, but engine builds
+  released before that skip existed walk every `*.yaml` in the pack and
+  hard-fail on a non-policy file. `.yml` keeps mapping packs invisible to
+  every deployed binary, old and new. Never add a `.yaml` file under
+  `mappings/`. Don't drop notes, examples, or
   work-in-progress `.yaml` files inline — they will fail the loader. Markdown
   docs (`README.md`, `CLAUDE.md`, per-pack READMEs) are fine; the loader only
   reads `.yaml`.
