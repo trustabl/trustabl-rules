@@ -95,3 +95,30 @@ rules:
       Provide a concise `description` string in the `tool({...})` options stating
       what the tool does and when the model should call it. The description is the
       model's primary routing signal alongside the tool name.
+
+  - id: OAI-025
+    title: Tool is defined but never referenced anywhere in the repo
+    severity: low
+    confidence: 0.5
+    language: python
+    applies_to:
+      - openai_tool
+    scope: tool
+    match:
+      reachability_is:
+        - unreachable
+    explanation: >
+      This @function_tool-decorated function is never referenced anywhere in
+      the repo's Python code — it appears in no Agent's tools=[...], no
+      handoff, and no call site. Trustabl's call-graph liveness marks a tool
+      unreachable only when nothing references its name at all, so this is
+      dead capability code: it is not exposed to any model today, but it
+      carries tool-grade capability (and drifts unreviewed) until a later
+      refactor wires it in. Dead tool definitions also misdirect review
+      effort toward code no agent can call.
+    fix: >
+      Delete the tool definition, or wire it into the intended agent's
+      tools=[...] list deliberately. If the tool is dispatched dynamically
+      (getattr, a string-keyed registry), static liveness cannot see that
+      reference — prefer a direct name reference so both the model wiring
+      and this analysis can track it.

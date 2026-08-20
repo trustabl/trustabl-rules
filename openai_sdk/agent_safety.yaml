@@ -109,6 +109,42 @@ rules:
       privileged tools are needed but sandboxing is impractical, document
       the decision and acknowledge the elevated risk explicitly.
 
+  - id: OAI-107
+    title: Handoff-target agent wires shell or filesystem-touching tools
+    severity: high
+    confidence: 0.85
+    language: python
+    applies_to:
+      - openai_agent
+      - openai_sandbox_agent
+    scope: agent
+    match:
+      all:
+        - agent_is_subagent_of_any: true
+        - agent_uses_tool_kind: [shell_invocation]
+    explanation: >
+      This agent is the target of a handoff (it appears in another agent's
+      handoffs=[...]) AND is wired with tools that execute shell commands or
+      touch the filesystem. In the OpenAI Agents SDK, input_guardrails run
+      only on the agent that first receives the user input — a handoff target
+      never runs its own input_guardrails on the handed-off turn. A parent can
+      therefore route around its own guardrails by delegating to this child and
+      asking it to run the shell-touching tool the parent would have screened.
+      The child's privileged tools then execute on input that no guardrail
+      ever inspected. This is why the rule does not require the child's
+      input_guardrails to be empty: even a child that declares guardrails does
+      not run them on the delegated turn, so the shell exposure is the hazard
+      regardless.
+    fix: >
+      Either remove the shell or filesystem-touching tools from this handoff
+      target, or move the privileged tools up to the top-level agent that
+      receives user input — where its input_guardrails actually run — and have
+      that agent do the work instead of delegating it. If the handoff must
+      stay, validate the handoff payload before it reaches the child (for
+      example with an @input_guardrail on the parent and an input_filter on
+      the handoff), since the SDK will not run the child's own guardrails on
+      the delegated turn.
+
   - id: OAI-109
     title: Agent uses WebSearchTool without input_guardrails
     severity: high
@@ -193,3 +229,66 @@ rules:
       wire it via `inputGuardrails: [...]` on the `Agent({...})` constructor. Pin
       MCP servers to trusted endpoints and treat web and file results as untrusted
       data.
+
+  - id: OAI-112
+    title: Guarded agent transitively wields shell through its handoff chain
+    severity: high
+    confidence: 0.6
+    language: python
+    applies_to:
+      - openai_agent
+      - openai_sandbox_agent
+    scope: agent
+    match:
+      all:
+        - agent_kwarg_present:
+            - input_guardrails
+        - transitive_capability_exceeds_direct:
+            - shell
+    explanation: >
+      This agent declares input_guardrails but delegates — directly or through
+      a chain of handoffs — to an agent whose tools execute shell commands, a
+      capability this agent does not wield itself. In the OpenAI Agents SDK,
+      input_guardrails run only on the agent that first receives the user
+      input, and a handoff target never runs its own input_guardrails on the
+      delegated turn. The guardrails here therefore create false confidence:
+      the shell-executing turn happens downstream, on a payload the handoff
+      may have transformed, with no guardrail in front of it.
+    fix: >
+      Treat the handoff chain as part of this agent's attack surface. Either
+      move the shell-wielding work up to this agent, where its guardrails
+      actually run; remove the shell tools from the downstream agent; or
+      constrain the delegated payload explicitly — an input_filter on the
+      handoff plus tool-level validation on the downstream agent.
+
+  - id: OAI-113
+    title: Unguarded agent's handoff chain reaches shell execution
+    severity: medium
+    confidence: 0.6
+    language: python
+    applies_to:
+      - openai_agent
+      - openai_sandbox_agent
+    scope: agent
+    match:
+      all:
+        - not:
+            agent_kwarg_present:
+              - input_guardrails
+        - transitive_capability_exceeds_direct:
+            - shell
+    explanation: >
+      This agent declares no input_guardrails and delegates, directly or
+      through a chain of handoffs, to an agent whose tools execute shell
+      commands — a capability this agent does not wield itself. If this agent
+      is where user input enters, nothing screens that input anywhere on a
+      delegation path that ends in shell execution: input_guardrails run only
+      on the first agent in the run, and handoff targets never run their own
+      on delegated turns. The chain makes the exposure easy to miss — each
+      agent looks harmless in isolation.
+    fix: >
+      Add input_guardrails to this agent so the entry point of the delegation
+      chain screens input before any downstream shell tool can act on it, and
+      review whether the downstream agent's shell access is needed at all.
+      The downstream agent's own configuration is flagged separately by the
+      direct shell-tool rules.

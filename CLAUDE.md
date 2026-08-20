@@ -185,4 +185,13 @@ product.
   notes, examples, or work-in-progress `.yaml` files inline — they will fail
   the loader. Markdown docs (`README.md`, `CLAUDE.md`, per-pack READMEs) are
   fine; the loader only reads `.yaml`.
+- Not the home of compliance crosswalks. Control mappings (rule ID to
+  NIST/ISO/SOC 2/PCI/EU AI Act controls) live in the **engine** repo at
+  `internal/compliance/mappings/` and are embedded in the binary. They do not
+  belong here: this repo is **public**, compliance is a Guard-only surface (the
+  open-source scanner ships no `compliance` command), and the engine's rule
+  loader skips a `mappings/` subtree anyway — so a crosswalk here is exposed to
+  everyone and read by no one. Engine builds released before that skip existed
+  walk every `*.yaml` in the pack and hard-fail on a non-policy file, so if a
+  `mappings/` directory ever reappears here it must never contain `.yaml`.
 - Not the home of the schema or predicates. Those live in the engine repo.
