@@ -1,0 +1,46 @@
+framework:
+  id: soc2
+  name: "SOC 2 (TSC 2017)"
+  version: "2017"
+  authority: aicpa
+  source_provenance: editorial
+  reviewed_by: "IJB"
+  reviewed_at: "2026-06-27"
+  catalog_version: "2026.06.1"
+mappings:
+  - rule_id: "CSDK-101"
+    controls:
+      - id: "CC6.1"
+        tier: in_scope
+        relation: relevant
+        note: "Over-broad Bash grant on a subagent undermines logical access restrictions."
+  - rule_id: "CSDK-102"
+    controls:
+      - id: "CC6.1"
+        tier: partial
+        relation: relevant
+        note: "Unrestricted web-search capability weakens logical access boundaries."
+  - rule_id: "CSDK-104"
+    controls:
+      - id: "CC6.1"
+        tier: in_scope
+        relation: relevant
+        note: "Filesystem-write built-ins on a subagent exceed intended logical access scope."
+  - rule_id: "CSDK-202"
+    controls:
+      - id: "CC6.3"
+        tier: in_scope
+        relation: relevant
+        note: "Session-level bypass removes role-based access control enforcement."
+  - rule_id: "CSDK-203"
+    controls:
+      - id: "CC8.1"
+        tier: partial
+        relation: relevant
+        note: "Missing agent-guidance doc weakens change-management documentation."
+  - rule_id: "CSDK-201"
+    controls:
+      - id: "CC6.2"
+        tier: in_scope
+        relation: relevant
+        note: "Project-wide permission bypass undermines access provisioning controls."

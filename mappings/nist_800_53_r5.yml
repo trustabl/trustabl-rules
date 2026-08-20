@@ -1,0 +1,46 @@
+framework:
+  id: nist_800_53_r5
+  name: "NIST SP 800-53 Rev 5"
+  version: "5.1.1"
+  authority: nist
+  source_provenance: editorial
+  reviewed_by: "IJB"
+  reviewed_at: "2026-06-27"
+  catalog_version: "2026.06.1"
+mappings:
+  - rule_id: "CSDK-101"
+    controls:
+      - id: "AC-6"
+        tier: in_scope
+        relation: relevant
+        note: "Over-broad subagent Bash grant is direct least-privilege evidence."
+  - rule_id: "CSDK-102"
+    controls:
+      - id: "AC-6"
+        tier: partial
+        relation: relevant
+        note: "WebSearch grant expands the attack surface beyond the minimum needed."
+  - rule_id: "CSDK-104"
+    controls:
+      - id: "AC-6"
+        tier: in_scope
+        relation: relevant
+        note: "Filesystem-write built-ins on a subagent violate least-privilege."
+  - rule_id: "CSDK-202"
+    controls:
+      - id: "AC-3"
+        tier: in_scope
+        relation: relevant
+        note: "Session-level permission bypass circumvents access enforcement."
+  - rule_id: "CSDK-203"
+    controls:
+      - id: "SA-15"
+        tier: partial
+        relation: relevant
+        note: "Missing agent-guidance doc weakens secure-development documentation."
+  - rule_id: "CSDK-201"
+    controls:
+      - id: "AC-2"
+        tier: in_scope
+        relation: relevant
+        note: "Project-wide permission bypass defeats account management controls."

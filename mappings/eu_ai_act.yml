@@ -1,0 +1,46 @@
+framework:
+  id: eu_ai_act
+  name: "EU AI Act"
+  version: "2024/1689"
+  authority: eu
+  source_provenance: editorial
+  reviewed_by: "IJB"
+  reviewed_at: "2026-06-27"
+  catalog_version: "2026.06.1"
+mappings:
+  - rule_id: "CSDK-101"
+    controls:
+      - id: "Art.15"
+        tier: partial
+        relation: relevant
+        note: "Over-broad Bash grant is partial evidence of missing robustness controls."
+  - rule_id: "CSDK-102"
+    controls:
+      - id: "Art.15"
+        tier: partial
+        relation: relevant
+        note: "Unrestricted web-search capability is a partial accuracy/robustness concern."
+  - rule_id: "CSDK-104"
+    controls:
+      - id: "Art.15"
+        tier: partial
+        relation: relevant
+        note: "Filesystem-write built-ins without restriction reduce system robustness."
+  - rule_id: "CSDK-202"
+    controls:
+      - id: "Art.14"
+        tier: in_scope
+        relation: relevant
+        note: "Session-level bypass removes a human-oversight enforcement point."
+  - rule_id: "CSDK-203"
+    controls:
+      - id: "Art.11"
+        tier: partial
+        relation: relevant
+        note: "Absent agent-guidance doc leaves a gap in technical documentation."
+  - rule_id: "CSDK-201"
+    controls:
+      - id: "Art.9"
+        tier: in_scope
+        relation: relevant
+        note: "Project-wide permission bypass undermines the risk-management system."

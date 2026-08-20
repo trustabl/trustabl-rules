@@ -1,0 +1,46 @@
+framework:
+  id: iso_27002
+  name: "ISO/IEC 27002:2022"
+  version: "2022"
+  authority: iso
+  source_provenance: editorial
+  reviewed_by: "IJB"
+  reviewed_at: "2026-06-27"
+  catalog_version: "2026.06.1"
+mappings:
+  - rule_id: "CSDK-101"
+    controls:
+      - id: "8.2"
+        tier: in_scope
+        relation: relevant
+        note: "Unrestricted Bash on a subagent breaches privileged access rights control."
+  - rule_id: "CSDK-102"
+    controls:
+      - id: "8.2"
+        tier: partial
+        relation: relevant
+        note: "Web-search capability without restriction is a privileged access concern."
+  - rule_id: "CSDK-104"
+    controls:
+      - id: "8.2"
+        tier: in_scope
+        relation: relevant
+        note: "Filesystem-write built-ins granted to a subagent exceed minimum privilege."
+  - rule_id: "CSDK-202"
+    controls:
+      - id: "8.18"
+        tier: in_scope
+        relation: relevant
+        note: "Session-level permission bypass removes privileged utility program controls."
+  - rule_id: "CSDK-203"
+    controls:
+      - id: "8.25"
+        tier: partial
+        relation: relevant
+        note: "No agent-guidance doc undermines secure development lifecycle requirements."
+  - rule_id: "CSDK-201"
+    controls:
+      - id: "5.15"
+        tier: in_scope
+        relation: relevant
+        note: "Project-wide bypass of approval flows defeats access control policy."
