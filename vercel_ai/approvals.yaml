@@ -4,10 +4,8 @@ policy:
   category: vercel_ai
   description: >
     Rules covering the human-in-the-loop approval gate the Vercel AI SDK
-    offers on sensitive tool calls. needsApproval on tool() and dynamicTool()
-    is deprecated in SDK 7 in favor of toolApproval at the agent or call
-    level, but its default is false everywhere, so a privileged tool ships
-    un-gated unless the author opts in.
+    offers on sensitive tool calls. This policy inspects only the tool-level
+    needsApproval option, which defaults to false when omitted.
 
 rules:
   - id: VAI-013
@@ -41,15 +39,14 @@ rules:
       approval function both count as a gate and do not fire. This complements
       VAI-001 (subprocess), VAI-002 (eval / new Function), and write-path
       rules: those flag the dangerous call; VAI-013 flags the missing approval
-      gate around it. SDK 7 deprecated needsApproval on tool() in favor of
-      toolApproval on generateText, streamText, or ToolLoopAgent; existing
-      code still works, but new code should migrate approval to the call or
-      agent level.
+      gate around it. SDK 7 moved approval to toolApproval on generateText,
+      streamText, or ToolLoopAgent. This tool-scoped rule cannot verify that
+      separate setting, so a finding in SDK 7 code requires manual review.
     fix: >
       Pass needsApproval: true to the tool() or dynamicTool() options for
       tools that execute commands, run code, or mutate the filesystem, and
-      handle the resulting approval requests in your agent loop. For SDK 7+,
-      prefer configuring toolApproval on generateText, streamText, or
-      ToolLoopAgent instead. If approval is intentionally automated for a
-      trusted tool, gate the agent with input validation and document the
-      decision.
+      handle the resulting approval requests in your agent loop. SDK 7+ uses
+      toolApproval on generateText, streamText, or ToolLoopAgent, but this rule
+      cannot yet verify that call or agent-level setting. If approval is
+      intentionally automated for a trusted tool, gate the agent with input
+      validation and document the decision.
