@@ -74,7 +74,13 @@ against. Pick values from the table for the scope you're targeting.
 | `claude_sdk_tool`    | `@tool` / `@claude_tool` / `claude_agent_sdk` |
 | `mcp_tool`           | `@server.tool`, `@mcp.tool`, `.register_tool` |
 | `shell_invocation`   | Bare function that calls `subprocess.*` etc. (no rules currently target this — OSH-* moved to a closed-source project) |
+| `langchain_tool`     | `@tool` / `StructuredTool` / `tool(...)` (LangChain, LangGraph) |
+| `crewai_tool`        | `@tool` / `BaseTool` subclass (CrewAI)        |
+| `pydantic_ai_tool`   | `@agent.tool` / `@agent.tool_plain` / `Tool(...)` (Pydantic AI) |
 | `adk_function_tool`  | `FunctionTool(fn)` wrapping a Python function (Google ADK) |
+| `vercel_ai_tool`     | `tool({...})` / `dynamicTool({...})` from the `ai` package |
+| `autogen_tool`       | `register_function` / `register_for_llm` / `register_for_execution` (AutoGen, AG2) |
+| `unknown`            | Fallback kind; rarely useful                  |
 
 **`scope: agent`** — receives an `AgentDef`; `applies_to` is matched against
 `AgentDef.Class` + `AgentDef.SDK`:
@@ -90,6 +96,17 @@ against. Pick values from the table for the scope you're targeting.
 | `adk_parallel_agent`      | `ParallelAgent(...)` from `google-adk`                        |
 | `adk_loop_agent`          | `LoopAgent(...)` from `google-adk`                            |
 | `adk_langgraph_agent`     | `LanggraphAgent(...)` from `google-adk`                       |
+| `langchain_agent`         | `create_*_agent(...)` from LangChain                          |
+| `langchain_agent_executor`| `AgentExecutor(...)` from LangChain                           |
+| `langchain_state_graph`   | `StateGraph(...)` from LangGraph                              |
+| `crewai_agent`            | `Agent(...)` from `crewai`                                    |
+| `pydantic_ai_agent`       | `Agent(...)` from `pydantic-ai`                               |
+| `vercel_ai_agent`         | `generateText` / `streamText` / `Agent` from the `ai` package |
+| `autogen_conversable_agent` | `ConversableAgent(...)` from AutoGen / AG2                  |
+| `autogen_user_proxy_agent`  | `UserProxyAgent(...)` from AutoGen / AG2                    |
+| `autogen_assistant_agent`   | `AssistantAgent(...)` from AutoGen / AG2                    |
+| `autogen_group_chat_manager`| `GroupChatManager(...)` from AutoGen / AG2                  |
+| `autogen_code_executor_agent` | An AutoGen agent configured with a code executor           |
 
 **`scope: repo`** — receives `RepoProfile` + `RepoInventory`. `applies_to` at
 this scope is matched against a fixed token list (the loader's
@@ -103,6 +120,11 @@ enum values used by the `repo_has_sdk_in_code` predicate:
 | `openshell`        | NVIDIA OpenShell SDK (no rules currently target this — OSH-* moved to a closed-source project) |
 | `mcp`              | Model Context Protocol               |
 | `google_adk`       | Google ADK (Python)                  |
+| `langchain`        | LangChain / LangGraph                |
+| `crewai`           | CrewAI                               |
+| `pydantic_ai`      | Pydantic AI                          |
+| `vercel_ai`        | Vercel AI SDK                        |
+| `autogen`          | AutoGen / AG2                        |
 
 Repo-scope rules typically combine `applies_to` with a `repo_has_sdk_in_code`
 predicate to narrow firing to repos that actually use the SDK in code (e.g.
@@ -112,7 +134,9 @@ accepts `openai_agents`, and `repo_has_sdk_in_code` also accepts `openai_agents`
 (the SDK enum, `models.SDKOpenAIAgents`); for Claude, `applies_to` uses
 `claude_sdk` (the category) while `repo_has_sdk_in_code` uses `claude_agent_sdk`
 (the SDK enum). Mismatching the two will silently fail the loader's scope
-check.
+check. The two namespaces agree for `langchain`, `crewai`, `pydantic_ai`,
+`vercel_ai`, `autogen`, `google_adk`, and `mcp` — Claude is the only token that
+differs between them.
 
 Always set `applies_to` explicitly — the loader does not infer scope from the
 category. Omitting it would make a rule fire against every entity of that scope
@@ -129,8 +153,26 @@ against a fixed token:
 Subagent rules use the `subagent_grants_tool` predicate (true when
 `SubagentDef.Tools` contains a listed tool name). They carry **no `language:`
 field** — subagents are markdown frontmatter, not code, and the engine's
-`subagentRuleDetector.Applies` does not gate on language. The shipped rule is
-CSDK-110 in `claude_sdk/subagent_safety.yaml`.
+`subagentRuleDetector.Applies` does not gate on language. The shipped rules are
+CSDK-110, CSDK-111, and CSDK-112 in `claude_sdk/subagent_safety.yaml`.
+
+**`scope: skill`** — receives a `SkillDef` (one Claude Code Agent Skill,
+`SKILL.md` plus the files bundled beside it). `applies_to` is matched against a
+fixed token:
+
+| `applies_to` value | Matches                                              |
+| ------------------ | ---------------------------------------------------- |
+| `claude_skill`     | A Claude Code Agent Skill (`SKILL.md` + its directory) |
+
+Skill rules use the `skill_*` predicate family — frontmatter checks
+(`skill_allows_tool`, `skill_allows_unrestricted_shell`,
+`skill_model_invocable`, `skill_has_description`), body checks
+(`skill_body_has_dynamic_exec`, `skill_references_external_url`,
+`skill_body_has_injection_marker`), and bundled-file checks
+(`skill_bundled_script_network_egress`, `skill_bundled_script_reads_secrets`,
+`skill_bundled_file_has_hardcoded_secret`). Like subagent rules they carry **no
+`language:` field** — a skill is markdown and its bundled scripts, not a parsed
+source language. The shipped rules are CSKILL-* in `claude_skill/`.
 
 ## "Add a rule for X"
 
