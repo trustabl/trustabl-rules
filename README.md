@@ -50,20 +50,20 @@ Rules are grouped by `<category>/<topic>.yaml`:
 ```
 manifest.yaml                         schema_version (metadata, not a rule)
 claude_sdk/                           Claude Agent SDK rules (CSDK-NNN)
-├── agent_safety.yaml                 CSDK-101..105 (agent); CSDK-120/130/131 (agent: permissionMode bypass + query() main-thread grants)
+├── agent_safety.yaml                 CSDK-101..105 (agent, python); CSDK-120..124, CSDK-130, CSDK-131 (agent, typescript)
 ├── code_execution.yaml               CSDK-107 (python), CSDK-011 (typescript)
 ├── error_handling.yaml               CSDK-005
 ├── idempotency.yaml                  CSDK-006 (python), CSDK-016 (typescript)
 ├── network.yaml                      CSDK-003
 ├── path_safety.yaml                  CSDK-004 (python), CSDK-012 (typescript fs-write)
-├── repo.yaml                         CSDK-201, CSDK-202 (repo scope, permission bypass)
+├── repo.yaml                         CSDK-201, CSDK-202 (permission bypass), CSDK-204 (max_turns) — repo scope
 ├── repo_hygiene.yaml                 CSDK-203 (repo scope, CLAUDE.md missing)
 ├── shell_safety.yaml                 CSDK-108 (python), CSDK-010 (typescript)
 ├── ssrf.yaml                         CSDK-009 (python), CSDK-013 (typescript)
-├── subagent_safety.yaml              CSDK-110, CSDK-111 (subagent scope)
-└── tool_definition.yaml              CSDK-001, CSDK-002, CSDK-007, CSDK-008 (python), CSDK-014 (typescript)
+├── subagent_safety.yaml              CSDK-110..112 (subagent scope)
+└── tool_definition.yaml              CSDK-001, CSDK-002, CSDK-007, CSDK-008, CSDK-017, CSDK-018 (python); CSDK-014 (typescript)
 openai_sdk/                           OpenAI Agents SDK rules (OAI-NNN)
-├── agent_safety.yaml                 OAI-101..104, OAI-109, OAI-110 (agent); OAI-105 (agent, typescript)
+├── agent_safety.yaml                 OAI-101..104, OAI-109, OAI-110, OAI-112 (agent); OAI-105 (agent, typescript)
 ├── approvals.yaml                    OAI-014, OAI-111 (needs_approval gates)
 ├── code_execution.yaml               OAI-013 (python), OAI-017 (typescript)
 ├── decorator_config.yaml             OAI-003, OAI-004, OAI-015
@@ -97,19 +97,62 @@ mcp/                                  Model Context Protocol rules (MCP-NNN)
 ├── path_safety.yaml                  MCP-005
 ├── shell_safety.yaml                 MCP-010, MCP-012
 ├── ssrf.yaml                         MCP-008, MCP-013
-└── tool_definition.yaml              MCP-001, MCP-002, MCP-003, MCP-011
+└── tool_definition.yaml              MCP-001..003 (python), MCP-011 (typescript), MCP-015..022 (go, csharp, php, rust)
+claude_skill/                         Claude Code skill rules (CSKILL-NNN, all skill scope)
+├── skill_quality_text.yaml           CSKILL-080..086
+└── skill_safety.yaml                 CSKILL-001..003, 010, 011, 020, 030, 040, 050, 060, 061, 070, 071
+langchain/                            LangChain / LangGraph rules (LC-NNN)
+├── agent_safety.yaml                 LC-101, LC-102 (agent); LC-111 (agent, typescript)
+├── code_execution.yaml               LC-004 (python), LC-012 (typescript)
+├── repo_hygiene.yaml                 LC-201 (repo scope, AGENTS.md/CLAUDE.md missing)
+├── shell_safety.yaml                 LC-003 (python), LC-011 (typescript)
+├── ssrf.yaml                         LC-005 (python), LC-013 (typescript)
+├── tool_behavior.yaml                LC-006 (python), LC-014 (typescript)
+└── tool_definition.yaml              LC-001, LC-002 (python); LC-010 (typescript)
+crewai/                               CrewAI rules (CREW-NNN, all python)
+├── agent_safety.yaml                 CREW-101, CREW-102, CREW-104, CREW-110 (agent)
+├── code_execution.yaml               CREW-103 (agent), CREW-003 (tool)
+├── dangerous_tools.yaml              CREW-106, CREW-107, CREW-109 (agent)
+├── idempotency.yaml                  CREW-006
+├── repo_hygiene.yaml                 CREW-201 (repo scope, AGENTS.md/CLAUDE.md missing)
+├── shell_safety.yaml                 CREW-004
+├── ssrf.yaml                         CREW-005
+├── tool_behavior.yaml                CREW-108
+└── tool_definition.yaml              CREW-001, CREW-002
+autogen/                              AutoGen / AG2 rules (AG2-NNN, all python)
+├── agent_safety.yaml                 AG2-001, AG2-002, AG2-004..006 (agent)
+├── code_execution.yaml               AG2-010
+├── network.yaml                      AG2-012
+├── repo_hygiene.yaml                 AG2-201 (repo scope, AGENTS.md/CLAUDE.md missing)
+├── shell_safety.yaml                 AG2-009
+├── ssrf.yaml                         AG2-011
+└── tool_definition.yaml              AG2-007, AG2-008
+pydantic_ai/                          Pydantic AI rules (PYD-NNN, all python)
+├── agent_safety.yaml                 PYD-101..103, PYD-105, PYD-106 (agent)
+├── code_execution.yaml               PYD-004
+├── idempotency.yaml                  PYD-007
+├── network.yaml                      PYD-006
+├── repo_hygiene.yaml                 PYD-201 (repo scope, AGENTS.md/CLAUDE.md missing)
+├── shell_safety.yaml                 PYD-003
+├── ssrf.yaml                         PYD-005
+└── tool_definition.yaml              PYD-001, PYD-002
+vercel_ai/                            Vercel AI SDK rules (VAI-NNN, all typescript)
+├── agent_safety.yaml                 VAI-006..009 (agent)
+├── code_execution.yaml               VAI-002
+├── network.yaml                      VAI-011
+├── repo_hygiene.yaml                 VAI-012 (repo scope, AGENTS.md/CLAUDE.md missing)
+├── shell_safety.yaml                 VAI-001
+├── ssrf.yaml                         VAI-003
+└── tool_definition.yaml              VAI-004, VAI-005
 ```
 
 ID prefix denotes SDK; `NNN` tool scope, `1NN` agent / subagent scope, `2NN`
-repo scope. The rule count is not written down here — it changes on every rule
+repo scope. Two packs predate that convention: `autogen/` numbers its agent
+rules AG2-001..006 in the tool range, and `claude_skill/` groups CSKILL-NNN by
+topic rather than scope (every rule there is skill scope). The rule count is not written down here — it changes on every rule
 ship. `trustabl rules validate` strict-loads the whole pack and is the
 authoritative count; counting `.yaml` files undercounts, since one file can
 hold several rules.
-
-> The tree above documents the four original packs. The repo now also ships
-> `claude_skill/`, `langchain/`, `crewai/`, `autogen/`, `pydantic_ai/`, and
-> `vercel_ai/` — browse the directory listing for the current set until this
-> section catches up.
 
 The category is the first path segment. Group related rules into a topic file;
 1–5 rules per file reads best. The loader walks recursively, so a new category
