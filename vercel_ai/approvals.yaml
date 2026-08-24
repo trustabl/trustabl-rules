@@ -1,0 +1,55 @@
+policy:
+  id: vercel_ai_approvals
+  name: Vercel AI SDK tool approval gates
+  category: vercel_ai
+  description: >
+    Rules covering the human-in-the-loop approval gate the Vercel AI SDK
+    offers on sensitive tool calls. needsApproval on tool() and dynamicTool()
+    is deprecated in SDK 7 in favor of toolApproval at the agent or call
+    level, but its default is false everywhere, so a privileged tool ships
+    un-gated unless the author opts in.
+
+rules:
+  - id: VAI-013
+    title: Privileged tool has no needsApproval gate
+    severity: high
+    confidence: 0.7
+    language: typescript
+    applies_to:
+      - vercel_ai_tool
+    scope: tool
+    match:
+      all:
+        - any:
+            - has_shell_call: true
+            - has_code_exec_call: true
+            - has_write_call: true
+        - any:
+            - not:
+                tool_decorator_kwarg_present:
+                  - needsApproval
+            - tool_decorator_kwarg_value:
+                kwarg: needsApproval
+                value: "false"
+    explanation: >
+      This Vercel AI SDK tool shells out, executes dynamic code, or writes the
+      filesystem, but has no needsApproval gate — the option is absent or
+      explicitly set to false. needsApproval is the Vercel AI SDK's
+      human-in-the-loop gate for sensitive tool calls, and its default is
+      false — so an un-gated privileged tool executes attacker-influenced
+      model output with no human checkpoint. Passing true or a per-call
+      approval function both count as a gate and do not fire. This complements
+      VAI-001 (subprocess), VAI-002 (eval / new Function), and write-path
+      rules: those flag the dangerous call; VAI-013 flags the missing approval
+      gate around it. SDK 7 deprecated needsApproval on tool() in favor of
+      toolApproval on generateText, streamText, or ToolLoopAgent; existing
+      code still works, but new code should migrate approval to the call or
+      agent level.
+    fix: >
+      Pass needsApproval: true to the tool() or dynamicTool() options for
+      tools that execute commands, run code, or mutate the filesystem, and
+      handle the resulting approval requests in your agent loop. For SDK 7+,
+      prefer configuring toolApproval on generateText, streamText, or
+      ToolLoopAgent instead. If approval is intentionally automated for a
+      trusted tool, gate the agent with input validation and document the
+      decision.
