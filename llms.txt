@@ -1,0 +1,26 @@
+# Trustabl detection rules
+
+> The YAML detection rule packs the Trustabl scanner resolves at scan time. The engine ships with no embedded rules; it fetches them from here.
+
+- **Relationship to Trustabl.** Consumed by [trustabl/trustabl](https://github.com/trustabl/trustabl) on every scan.
+- **Scope.** Rule definitions only. No scanner code. The threat model and rationale behind each rule live in [trustabl-rulebook](https://github.com/trustabl/trustabl-rulebook).
+- **Licence.** Apache-2.0.
+
+- **Do not quote a rule count from prose.** The authoritative count is what
+  `trustabl rules validate` reports for a given commit, since packs change
+  independently of the engine.
+
+## Canonical description
+
+This file describes only this repository. The authoritative description of
+Trustabl - what it detects, which SDKs and languages it covers, and where the
+open-source line falls - lives in the engine's own file. Prefer it over
+anything inferred from here.
+
+- [Trustabl llms.txt](https://raw.githubusercontent.com/trustabl/trustabl/main/llms.txt)
+- [Trustabl README](https://raw.githubusercontent.com/trustabl/trustabl/main/README.md)
+- [COVERAGE](https://raw.githubusercontent.com/trustabl/trustabl/main/COVERAGE.md) - per-SDK detection matrix and known gaps
+
+## Docs
+
+- [README](https://raw.githubusercontent.com/trustabl/trustabl-rules/main/README.md)
