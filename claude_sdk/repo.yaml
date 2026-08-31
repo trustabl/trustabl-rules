@@ -10,7 +10,7 @@ policy:
 rules:
   - id: CSDK-201
     title: Project default permission mode bypasses approvals
-    severity: high
+    severity: critical
     confidence: 0.9
     applies_to:
       - claude_sdk
@@ -35,7 +35,7 @@ rules:
 
   - id: CSDK-202
     title: Session permission mode bypasses approvals
-    severity: high
+    severity: critical
     confidence: 0.9
     applies_to:
       - claude_sdk
@@ -59,6 +59,68 @@ rules:
       on a developer's or user's machine.
 
   - id: CSDK-204
+    title: Project settings pre-approve unrestricted shell
+    severity: critical
+    confidence: 0.9
+    applies_to:
+      - claude_sdk
+    scope: repo
+    match:
+      repo_claude_permission_allows_unrestricted_shell: true
+    explanation: >
+      A .claude/settings.json (or settings.local.json) in this repository lists
+      `Bash` in `permissions.allow` with no command pattern narrowing it, so
+      every shell command the model chooses runs without an approval prompt, in
+      every session, for the whole project. This is a wider grant than the same
+      string in one SKILL.md or one slash command: those apply while that skill
+      or command runs, this applies always. It reaches the same end state as
+      defaultMode "bypassPermissions" (CSDK-201) for the one tool that matters
+      most, without looking like a bypass in review.
+      Deny entries narrow this but do not replace it. Claude Code resolves deny
+      over allow, so a blanket allow with specific denies is "everything except
+      a blocklist", and a blocklist of dangerous shell commands is not
+      enumerable — the next unsafe invocation is always one the list did not
+      anticipate.
+    fix: >
+      Replace the blanket grant with the specific commands the project needs,
+      using the pattern form: "Bash(git status:*)", "Bash(npm test:*)". If
+      broader shell access is genuinely required, leave Bash out of
+      `permissions.allow` so each call prompts, and gate it with a PreToolUse
+      hook that allowlists commands. Keep unrestricted grants to disposable
+      sandboxes.
+
+  - id: CSDK-205
+    title: Project settings pre-approve side-effecting tools
+    severity: high
+    confidence: 0.8
+    applies_to:
+      - claude_sdk
+    scope: repo
+    match:
+      repo_claude_permission_allows_tool:
+        - Write
+        - Edit
+        - MultiEdit
+        - NotebookEdit
+        - WebFetch
+        - WebSearch
+    explanation: >
+      A .claude/settings.json in this repository pre-approves a tool that
+      changes state or reaches the network — a filesystem write, or web
+      retrieval — in `permissions.allow`, so it runs project-wide with no
+      prompt. Writes turn model-generated text into persistent state: source,
+      configuration, or the .claude/settings.json governing the agent's own
+      permissions. Web retrieval pulls attacker-reachable content into the
+      context and carries in-context data out in the request. Pre-approving
+      either removes the one human checkpoint on that class of action for every
+      session in the project.
+    fix: >
+      Remove these tools from `permissions.allow` and let them prompt, or scope
+      them with patterns so the grant covers only the paths and hosts the work
+      needs (e.g. "Write(src/generated/**)"). Prefer `ask` over `allow` for
+      anything that writes or fetches: it keeps the workflow while preserving
+      the checkpoint.
+  - id: CSDK-206
     title: Claude Agent SDK session sets no explicit max_turns limit
     severity: low
     confidence: 0.6

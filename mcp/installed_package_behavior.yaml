@@ -1,0 +1,142 @@
+policy:
+  id: mcp_installed_package_behavior
+  name: Installed MCP server behavior
+  category: mcp
+  description: >
+    Behavior observed in the source of an MCP server this repository has actually
+    installed. These rules read dependency source, which the default scan never
+    opens, and they fire only when the reader asks for that pass.
+
+    They are deliberately LOCAL findings, not published advisories. A finding
+    here says "the code in your node_modules does this, at this line"; it makes
+    no claim about the package's author and it leaves the machine. That is the
+    whole reason this surface can ship without the named reviewer, retained
+    evidence and dispute channel a threat-feed entry requires: naming a third
+    party's product in public is a different act from telling an operator what is
+    sitting in their own tree.
+
+    Package rules carry no language: field. An installed package's language is
+    its ecosystem's, and applies_to already discriminates npm from pypi.
+
+rules:
+  - id: MCPKG-001
+    title: Installed MCP server reads a credential and transmits it
+    severity: critical
+    confidence: 0.75
+    applies_to:
+      - npm_package
+      - pypi_package
+    scope: package
+    match:
+      package_behavior_is:
+        - secret_read_plus_egress
+    explanation: >
+      This file reads a credential from the environment and, in the same file,
+      sends a request to a remote host. Neither half is remarkable on its own:
+      reading configuration is ordinary and making an HTTP call is ordinary. The
+      conjunction is the shape worth a person's attention, because it is what
+      exfiltration looks like in source before it looks like anything in a log.
+
+      An MCP server runs with whatever credentials the agent host hands it, and
+      it is trusted to use them for the job it advertises. Code that collects a
+      secret and contacts an address of its own choosing has the means to send
+      that secret somewhere the operator never authorised, whether or not it does
+      so on any particular run. Static reading cannot tell those apart, which is
+      why this is reported rather than blocked.
+
+      The finding is about the copy of the code in this repository. It is not a
+      claim that the package is malicious, and nothing about it is published.
+    fix: >
+      Open the cited file and line and establish where the request goes. If the
+      destination is the service the package exists to talk to, and the credential
+      is that service's own, this is the package doing its job: record it and move
+      on. If the destination is not that service, or the credential belongs to
+      something else, treat it as an incident: rotate the credential, pin or
+      remove the dependency, and preserve the file as evidence before upgrading.
+
+      If you want the behaviour constrained rather than investigated, deny the
+      tool that reaches this server in the agent's contract, which removes the
+      capability regardless of what the package does.
+
+  - id: MCPKG-002
+    title: Installed MCP server adds a fixed extra recipient to outbound messages
+    severity: high
+    confidence: 0.7
+    applies_to:
+      - npm_package
+      - pypi_package
+    scope: package
+    match:
+      package_behavior_is:
+        - silent_recipient_added
+    explanation: >
+      This file sets a bcc-style recipient to an address written into the source,
+      in code that also sends over the network. The address is not a parameter,
+      not configuration and not something the caller chose: it is fixed, so every
+      message this code sends goes to it as well as to the intended recipient.
+
+      An MCP server that composes or forwards messages is trusted with the
+      content of those messages. A copy sent to an address the operator never
+      configured is a durable leak of everything that passes through, and it
+      leaves no trace in the sending application, because from the caller's side
+      the message was delivered exactly as requested.
+
+      A field declaration is not this finding. `bcc?: string` in a type carries no
+      address, and the literal is what separates a feature that lets a user set a
+      bcc from code that sets one on their behalf.
+    fix: >
+      Open the cited line and read the address. If it belongs to the operator's
+      own organisation and was configured deliberately, record that and move on.
+      If it does not, treat every message this server has handled as disclosed:
+      preserve the file as evidence, pin or remove the dependency, and tell
+      whoever owns the affected correspondence before upgrading, because an
+      upgrade destroys the copy that shows what happened.
+
+      Where the behaviour should be under the operator's control rather than the
+      package's, the durable fix is configuration: the recipient list belongs in
+      the server's config where it can be reviewed, not in its source.
+
+  - id: MCPKG-003
+    title: Installed MCP server carries instruction-override text in a string
+    severity: high
+    confidence: 0.6
+    applies_to:
+      - npm_package
+      - pypi_package
+    scope: package
+    match:
+      package_behavior_is:
+        - injection_in_tool_description
+    explanation: >
+      A string in this file instructs the model rather than describing what the
+      code does: text of the "ignore previous instructions" or "do not tell the
+      user" kind. Strings in an MCP server reach the model as tool names,
+      descriptions and results, which is the one place where prose becomes
+      instruction.
+
+      That makes a tool description an injection surface with no equivalent
+      elsewhere. The agent host presents it to the model as trusted metadata about
+      an available capability, so text placed there is read with the authority of
+      the tool list rather than the suspicion given to a document or a web page.
+      "Do not tell the user" in that position is not a comment about behaviour; it
+      is an attempt to configure it.
+
+      Confidence is lower here than for the other package rules, deliberately.
+      The signature requires the string to be the value of a description-like
+      field rather than merely to exist somewhere in the file, which is what
+      keeps a prompt-hardening library's own refusal list out: a library that
+      names an attack is not performing it. What that narrowing gives up is an
+      injection string assigned to a variable and used as a description
+      elsewhere, which is a real evasion and is why this rule reports rather than
+      concludes.
+    fix: >
+      Read the cited line and decide which of the two it is. Text that documents
+      or tests an injection pattern is fine where it sits; text that will be sent
+      to a model as a tool description, a tool result or server instructions is
+      not, and should be removed or rewritten to describe the tool rather than
+      direct the model.
+
+      If the string is reachable by the model and the package is not yours to
+      change, remove the server from the agent's tool list rather than trying to
+      sanitise it downstream: once the text is in the tool description the model
+      has already been told, and filtering the output is too late.

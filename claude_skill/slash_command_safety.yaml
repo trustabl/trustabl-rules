@@ -1,0 +1,96 @@
+policy:
+  id: claude_slash_command_safety
+  name: Claude Code slash command safety
+  category: claude_skill
+  description: >
+    Capability handed over by a Claude Code slash command (.claude/commands/*.md).
+    A command's allowed-tools frontmatter is a pre-approved tool list, exactly as
+    a SKILL.md's is, and until the slash_command scope existed nothing could read
+    it: the same `allowed-tools: Bash` was a critical finding in a skill and no
+    finding at all in a command. Slash command rules audit frontmatter only and
+    are language-agnostic (markdown), so they carry no language: field.
+
+rules:
+  - id: CCMD-001
+    title: Slash command auto-approves unrestricted shell
+    severity: critical
+    confidence: 0.9
+    applies_to:
+      - claude_slash_command
+    scope: slash_command
+    match:
+      slash_command_allows_unrestricted_shell: true
+    explanation: >
+      This slash command's `allowed-tools` grants `Bash` with no command pattern
+      narrowing it, so every shell command the model chooses while the command
+      runs is pre-approved and executes without an approval prompt. The grant is
+      the whole gate: Claude Code asks the user before running a shell command
+      precisely because the command text is model-generated, and listing a bare
+      `Bash` removes that question for the lifetime of the invocation. Anything
+      that can steer the model during the command — a fetched page, a file it
+      reads, an issue body pasted into the prompt — reaches the shell with no
+      human in the loop. This is the same exposure CSKILL-001 flags on a
+      SKILL.md, on a surface that had no rules at all.
+    fix: >
+      Scope the grant to the commands the task actually needs, using the pattern
+      form: `allowed-tools: Bash(git status:*), Bash(npm test:*)`. If the command
+      genuinely needs open shell access, remove `Bash` from `allowed-tools` and
+      let the normal approval prompt run, or gate it with a PreToolUse hook that
+      allowlists specific commands.
+
+  - id: CCMD-002
+    title: Model-invocable slash command grants file-writing tools
+    severity: high
+    confidence: 0.8
+    applies_to:
+      - claude_slash_command
+    scope: slash_command
+    match:
+      all:
+        - slash_command_model_invocable: true
+        - slash_command_allows_tool:
+            - Write
+            - Edit
+            - MultiEdit
+            - NotebookEdit
+    explanation: >
+      This slash command grants a filesystem-write built-in and does not set
+      `disable-model-invocation: true`, so the model can invoke it on its own
+      rather than only when a human types it. That combination is what turns a
+      tool grant into an injection surface: the command is reachable from any
+      text that reaches the model, and it arrives carrying pre-approved write
+      access. A prompt injection does not need to talk the model into a risky
+      edit, only into running a command that already has permission to make one.
+      Writes are also persistent — source, configuration, or the
+      .claude/settings.json governing the agent's own permissions.
+    fix: >
+      Set `disable-model-invocation: true` so the command runs only when a human
+      types it, or drop the write built-ins from `allowed-tools` and let each
+      write go through the normal approval path. If the command must both be
+      model-invocable and write, scope what it can touch with a PreToolUse hook.
+
+  - id: CCMD-003
+    title: Slash command grants model-driven web retrieval
+    severity: medium
+    confidence: 0.75
+    applies_to:
+      - claude_slash_command
+    scope: slash_command
+    match:
+      slash_command_allows_tool:
+        - WebFetch
+        - WebSearch
+    explanation: >
+      This slash command's `allowed-tools` includes a web-retrieval built-in, so
+      content the model chooses to fetch is pre-approved and flows back into the
+      conversation as text. Retrieved pages and search results are
+      attacker-reachable — anyone can publish a page that ranks for a likely
+      query — which makes the grant a second-order prompt-injection channel, and
+      the request itself a way to carry in-context data out in a URL or query
+      string. The same grant on a subagent is CSDK-112 and CSDK-124.
+    fix: >
+      Remove `WebFetch` / `WebSearch` from `allowed-tools` unless the command's
+      job genuinely needs open web access. If it does, treat everything returned
+      as untrusted input: keep it out of instructions, do not let it widen tool
+      permissions, and prefer fetching a pinned URL the command controls over one
+      the model chooses.

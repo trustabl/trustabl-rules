@@ -76,3 +76,32 @@ rules:
       genuinely research-oriented. If the subagent must search, keep its other
       grants read-only so injected search content cannot escalate into writes
       or shell, and treat its output as untrusted in the parent loop.
+  - id: CSDK-113
+    title: Subagent frontmatter bypasses permission prompts
+    severity: critical
+    confidence: 0.9
+    applies_to:
+      - claude_subagent
+    scope: subagent
+    match:
+      subagent_permission_mode_is:
+        - bypassPermissions
+    explanation: >
+      This subagent's frontmatter sets `permissionMode: bypassPermissions`, so
+      every tool it is granted runs without an approval prompt for the whole
+      time it is dispatched. The grant list stops being a list of things the
+      subagent may ask to do and becomes a list of things it will do
+      unsupervised.
+      This is the same posture CSDK-201 flags for the project and CSDK-202 for
+      the session, on the surface where it is hardest to notice. A subagent is
+      dispatched autonomously by a lead agent in response to a model-generated
+      task description; nobody reads this file at dispatch time, and a prompt
+      injection that reaches the lead agent reaches the subagent's tools with the
+      approval gate already removed.
+    fix: >
+      Remove `permissionMode` from the frontmatter so the subagent inherits the
+      session's mode and its tool calls prompt, or set it to "default". If the
+      subagent genuinely must run unattended, narrow its `tools:` list to the
+      minimum the job needs and gate the dangerous ones with a PreToolUse hook —
+      an unattended subagent with a wide grant list is the combination this rule
+      exists to prevent.

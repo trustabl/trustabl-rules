@@ -56,7 +56,7 @@ claude_sdk/                           Claude Agent SDK rules (CSDK-NNN)
 ├── idempotency.yaml                  CSDK-006 (python), CSDK-016 (typescript)
 ├── network.yaml                      CSDK-003
 ├── path_safety.yaml                  CSDK-004 (python), CSDK-012 (typescript fs-write)
-├── repo.yaml                         CSDK-201, CSDK-202 (repo scope, permission bypass)
+├── repo.yaml                         CSDK-201..202, CSDK-204..206 (repo scope: permission bypass, unrestricted shell, pre-approved tools, max_turns)
 ├── repo_hygiene.yaml                 CSDK-203 (repo scope, CLAUDE.md missing)
 ├── shell_safety.yaml                 CSDK-108 (python), CSDK-010 (typescript)
 ├── ssrf.yaml                         CSDK-009 (python), CSDK-013 (typescript)
