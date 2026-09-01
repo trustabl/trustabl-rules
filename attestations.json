@@ -146,9 +146,9 @@
       "attested_commit": "cfdfd46913007bba389c3096c7c022417c5dac66"
     },
     "google_adk/agent_safety.yaml": {
-      "sha256": "84e5ea3d553ca4ba7bed1e755fc871db4d71626fc37af2503dba07c89f1ca2b4",
-      "attested_at": "2026-08-04",
-      "attested_commit": "cfdfd46913007bba389c3096c7c022417c5dac66"
+      "sha256": "de3f49cc1649bf2644f279da0b39dcd07ee9ec6f6e8756f7e4535498fa101bc3",
+      "attested_at": "2026-08-31",
+      "attested_commit": "5f5b185d18674921f5544846104125e9ba48a764"
     },
     "google_adk/builtin_tools.yaml": {
       "sha256": "87dab0ea78bdbd148856dcdb1e196efdc7bee2049d54c05bbd29749776504c1a",
