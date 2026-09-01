@@ -1,0 +1,126 @@
+policy:
+  id: runtime_conformance
+  name: Runtime conformance
+  category: runtime
+  description: >
+    Runtime-scope rules over the signed conformance summary the runtime
+    writes and the guard reads. Evaluated ENGINE-SIDE (the runtime is a
+    separate Go module and cannot import the rule engine), over runtime
+    observations judged against the compiled contract. The one scope whose
+    input is not a scan artifact: it is behavior, bound and judged, joined
+    back to what was declared. These rules DETECT and report; nothing here
+    blocks a call, and no rule text may imply otherwise.
+
+rules:
+  - id: RT-001
+    title: Tool call outside the declared contract
+    severity: high
+    confidence: 0.9
+    applies_to:
+      - conformance_summary
+    scope: runtime
+    match:
+      action_status_is:
+        - off_contract
+    explanation: >
+      A declared agent executed a tool its contract does not grant. This is
+      the runtime fact the whole compile chain exists to catch: the action
+      was bound to the agent with confidence (this is not a binding failure,
+      which is reported separately), judged against the declared allow-list,
+      and refused by it. The finding carries the constraint id the verdict
+      cites, so the violation resolves back to the exact compiled limit and
+      its provenance.
+    fix: >
+      If the behavior is intended, declare the tool on the agent and
+      re-export the contract so the grant is reviewed like any other
+      authority change. If it is not intended, treat this as a live
+      incident signal: the agent is doing something nobody declared.
+
+  - id: RT-002
+    title: Unbound rate above the measured threshold
+    severity: medium
+    confidence: 0.8
+    applies_to:
+      - conformance_summary
+    scope: runtime
+    match:
+      summary_unbound_rate_gte: 10
+    explanation: >
+      More than 10% of the window's observed actions could not be bound to
+      any declared agent (unknown agent, unresolvable tool, or an ambiguous
+      name collision). Above this threshold, per-decision attribution
+      degrades: the off-contract rate is computed over a shrinking base and
+      every conformance claim weakens with it. The threshold is the one the
+      R1 corpus measurement named, not a guess.
+    fix: >
+      Stamp the deployment with the binding key (OTEL_RESOURCE_ATTRIBUTES,
+      printed by contract export and every guard publish) so the contract
+      resolves exactly; name call-based agents where the SDK allows it; and
+      check the unbound breakdown in the summary for which failure mode
+      dominates.
+
+  - id: RT-003
+    title: Runtime carries a contract hash that matches no stored contract
+    severity: high
+    confidence: 0.9
+    applies_to:
+      - conformance_summary
+    scope: runtime
+    match:
+      action_has_hash_miss: true
+    explanation: >
+      A span arrived stamped with a contract hash that resolves to nothing
+      in the content-addressed store: the workload is running under a policy
+      version this site no longer retains, or was stamped by a pipeline this
+      guard has never seen. Binding degraded to name matching (never
+      force-fit), so the verdicts still stand, but the exact-join guarantee
+      is gone for these actions and the deployment's policy lineage cannot
+      be verified.
+    fix: >
+      Re-deploy the workload with the binding key from the current contract
+      export, or raise the guard's contract-history retention
+      (--contract-history-keep) if legitimate older versions are being
+      pruned before their workloads drain.
+
+  - id: RT-004
+    title: Guardrail declared but never observed at runtime
+    severity: low
+    confidence: 0.6
+    applies_to:
+      - conformance_summary
+    scope: runtime
+    match:
+      summary_guards_never_observed: true
+    explanation: >
+      The contract declares input or output guardrails, and the observation
+      window contains no runtime evidence of any executing. Today that
+      absence is expected — no ingest convention extracts guardrail spans
+      yet — which is why this fires at low confidence: it reports the
+      observability gap itself. A declared control that leaves no runtime
+      trace cannot be shown to have run, which is precisely the class of
+      claim an auditor will not accept on declaration alone.
+    fix: >
+      Instrument guardrail execution so it emits spans (the summary's
+      guards_observed field is ready to carry them), or record explicitly
+      that guardrail conformance is asserted from static declaration only.
+
+  - id: RT-005
+    title: Declared constraint never exercised in the window
+    severity: low
+    confidence: 0.6
+    applies_to:
+      - conformance_summary
+    scope: runtime
+    match:
+      summary_constraint_never_hit: true
+    explanation: >
+      At least one compiled constraint was never hit by any observed action
+      across the window: no grant it governs was used and no denial it backs
+      fired. A constraint that is never exercised is not wrong, but it is
+      unverified in practice — the authority it fences either is not being
+      used (possible over-grant) or is not being observed. The summary IS
+      the window; the finding lists how many constraints went unexercised.
+    fix: >
+      Review the unexercised constraints against actual usage: narrow grants
+      nobody uses (the least-privilege win this surfaces), or extend the
+      observation window before concluding anything.
