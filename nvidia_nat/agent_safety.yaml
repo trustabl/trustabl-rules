@@ -1,0 +1,90 @@
+policy:
+  id: nvidia_nat_agent_safety
+  name: NeMo Agent Toolkit agent safety
+  category: nvidia_nat
+  description: >
+    Agent-scope rules for NVIDIA NeMo Agent Toolkit workflow configs. A NAT
+    agent is a YAML block (the workflow section, or an agent-typed functions
+    entry), so these rules read the config's own fields: iteration caps that
+    were left to the framework default, and the verbose flag NVIDIA's docs
+    themselves warn logs prompts, outputs and intermediate steps.
+
+rules:
+  - id: NAT-102
+    title: react_agent has no explicit max_tool_calls limit
+    severity: low
+    confidence: 0.6
+    applies_to:
+      - nat_react_agent
+    scope: agent
+    match:
+      agent_kwarg_missing:
+        - max_tool_calls
+    explanation: >
+      This react_agent sets no explicit max_tool_calls, so it falls back to
+      the toolkit's default cap (documented as 15). That default prevents a
+      true runaway, but it is a generic ceiling rather than one sized to this
+      agent's role: a model that loops or oscillates still burns up to the
+      full budget of tool round-trips and LLM calls before the agent is
+      forced to answer, a latency and token cost the workflow may not
+      tolerate. The field also accepts the max_iterations alias, and the
+      implicit default can move between toolkit releases without any change
+      in this config.
+    fix: >
+      Set max_tool_calls: in the react_agent block, sized to the role — a
+      single-lookup agent rarely needs more than a handful of calls. Treat
+      hitting the cap as a signal to surface rather than a bound to raise:
+      split genuinely long tasks into bounded sub-workflows instead of
+      removing the ceiling.
+
+  - id: NAT-103
+    title: tool_calling_agent has no explicit max_iterations limit
+    severity: low
+    confidence: 0.6
+    applies_to:
+      - nat_tool_calling_agent
+    scope: agent
+    match:
+      agent_kwarg_missing:
+        - max_iterations
+    explanation: >
+      This tool_calling_agent sets no explicit max_iterations, so it falls
+      back to the toolkit's default cap (documented as 15). The default is a
+      generic ceiling rather than one sized to this agent's role, so a model
+      that loops — retrying a failing tool, re-reading the same source —
+      keeps consuming turns, tokens and tool side effects until the implicit
+      bound is reached, and that bound can shift between toolkit releases
+      without any change in this config.
+    fix: >
+      Set max_iterations: in the tool_calling_agent block, sized to the work
+      the agent actually does. Pair a tight cap with handle_tool_errors so a
+      failing tool surfaces as an error result instead of another iteration.
+
+  - id: NAT-104
+    title: Agent runs with verbose logging of prompts and outputs
+    severity: low
+    confidence: 0.8
+    applies_to:
+      - nat_react_agent
+      - nat_tool_calling_agent
+    scope: agent
+    match:
+      agent_kwarg_value:
+        kwarg: verbose
+        value: "true"
+    explanation: >
+      This agent sets verbose: true, which the toolkit documents as logging
+      the agent's input, output and intermediate steps — and whose default of
+      false NVIDIA's own field reference explains as "useful to prevent
+      logging of sensitive data". Whatever flows through the agent (user
+      prompts, retrieved documents, tool results, credentials a tool echoes)
+      lands in the process logs, where log aggregation retains it far outside
+      the conversation's trust boundary. Every vendor example config ships
+      with verbose on, so a workflow scaffolded from an example carries this
+      into production unless someone deliberately turns it off.
+    fix: >
+      Remove verbose: true (the default is false) for production configs, or
+      scope it to development profiles only. If step-level observability is
+      the goal, prefer the telemetry section's tracing configuration, which
+      is built for that and can be pointed at a store with appropriate
+      retention, over raw verbose logs.

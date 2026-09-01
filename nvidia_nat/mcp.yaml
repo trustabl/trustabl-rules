@@ -1,0 +1,118 @@
+policy:
+  id: nvidia_nat_mcp
+  name: NeMo Agent Toolkit MCP and code-execution wiring
+  category: nvidia_nat
+  description: >
+    Rules for the surfaces a NAT config wires in from OUTSIDE the repo: the
+    mcp_client function groups that hand an agent a remote MCP server's tool
+    catalog, and the code_execution function that sends model-written code to
+    an execution service. What these have in common is that the config is the
+    only place a reviewer can bound them.
+
+rules:
+  - id: NAT-101
+    title: Agent wires an mcp_client group with no include or exclude filter
+    severity: high
+    confidence: 0.75
+    applies_to:
+      - nat_react_agent
+      - nat_tool_calling_agent
+    scope: agent
+    match:
+      all:
+        - agent_uses_hosted_tool_class: [mcp_client, per_user_mcp_client]
+        - not:
+            any:
+              - agent_hosted_tool_kwarg_present:
+                  class: mcp_client
+                  kwarg: include
+              - agent_hosted_tool_kwarg_present:
+                  class: mcp_client
+                  kwarg: exclude
+              - agent_hosted_tool_kwarg_present:
+                  class: per_user_mcp_client
+                  kwarg: include
+              - agent_hosted_tool_kwarg_present:
+                  class: per_user_mcp_client
+                  kwarg: exclude
+    explanation: >
+      This agent's tool_names wires an mcp_client function group that sets
+      neither include: nor exclude:. Without a filter, the group registers
+      every tool the remote MCP server currently exposes — a surface that is
+      not enumerable from this config, can grow or change behavior whenever
+      the server is updated, and is entirely outside this repository's
+      control. include/exclude is the toolkit's only mechanism for narrowing
+      that catalog to a reviewed allow-list; without it, the agent inherits
+      the server's full, and potentially server-operator-controlled, tool set
+      with no static boundary a code reviewer can check.
+    fix: >
+      Add include: to the mcp_client group naming the specific tools this
+      agent is allowed to call (include and exclude are mutually exclusive;
+      prefer include, which fails closed as the server grows). Re-review the
+      list whenever the agent's task changes, and treat any server tool not
+      named as excluded by default.
+
+  - id: NAT-105
+    title: mcp_client connects over SSE, a transport with no authentication
+    severity: medium
+    confidence: 0.6
+    applies_to:
+      - nat_react_agent
+      - nat_tool_calling_agent
+    scope: agent
+    match:
+      any:
+        - agent_hosted_tool_kwarg_value:
+            class: mcp_client
+            kwarg: server.transport
+            value: sse
+        - agent_hosted_tool_kwarg_value:
+            class: per_user_mcp_client
+            kwarg: server.transport
+            value: sse
+    explanation: >
+      This agent's mcp_client group connects over the SSE transport, which
+      the toolkit's own documentation flags as supporting no authentication:
+      auth_provider is only honored on streamable-http, so an SSE connection
+      to an MCP server is structurally unauthenticatable from this config.
+      NVIDIA's guidance limits SSE to local development on localhost or
+      behind an authenticating reverse proxy; anywhere else, whoever can
+      reach the endpoint can serve this agent's tools.
+    fix: >
+      Use transport: streamable-http with an auth_provider for anything
+      beyond local development. If SSE must stay (a local dev loop), keep the
+      URL on localhost and treat the config as non-promotable to shared
+      environments as it stands.
+
+  - id: NAT-106
+    title: code_execution function configured with no guardrails middleware
+    severity: medium
+    confidence: 0.6
+    applies_to:
+      - nvidia_nat
+    scope: repo
+    match:
+      all:
+        - repo_component_present: [nat_code_execution_function]
+        - not:
+            any:
+              - repo_component_present: [nat_guardrails_middleware]
+              - repo_component_present: [nat_hitl_middleware]
+    explanation: >
+      A workflow config in this repo declares a code_execution function,
+      which sends a string of model-written Python to an execution service —
+      and no config declares the toolkit's guardrails middleware (or a
+      recognizable human-in-the-loop middleware) to stand between the model
+      and that capability. Model-written code is the widest tool an agent can
+      hold: whatever the execution sandbox permits, a prompt-injected or
+      simply wrong model can do. The toolkit's own mitigation surfaces are
+      the guardrails middleware (a policy engine at function input and output
+      boundaries) and HITL approval middleware; with neither declared, the
+      only bound is the execution service itself.
+    fix: >
+      Add a guardrails middleware entry (type guardrails) and attach it to
+      the workflow via its middleware: list, or gate the function behind a
+      HITL approval middleware. Custom HITL middleware with its own _type is
+      not statically recognizable here — if this repo uses one, the finding
+      is a prompt to make that mitigation visible in review, not to add a
+      second one.
