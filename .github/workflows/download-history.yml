@@ -149,15 +149,16 @@ jobs:
           #
           # Reads bundles, not total: statement.json is cache-expiry noise and
           # moves by more than one per pull, so it would inflate the headline.
+          # Bare number by request. Note this drops the "since <date>" qualifier,
+          # so the badge alone cannot say the count is a delta rather than an
+          # all-time total - the README alt text and baseline_date carry that.
           latest = series[-1]
           delta  = latest["since_baseline"]["bundles"]
-          bd     = datetime.date.fromisoformat(base["date"])
-          pretty = "%d %s %d" % (bd.day, bd.strftime("%b"), bd.year)
           os.makedirs(os.path.dirname(badge), exist_ok=True)
           with open(badge, "w") as f:
               json.dump({"schemaVersion": 1,
                          "label": "downloads",
-                         "message": "+%d since %s" % (delta, pretty),
+                         "message": str(delta),
                          "color": "brightgreen"}, f)
               f.write("\n")
 
