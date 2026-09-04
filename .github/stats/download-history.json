@@ -1,18 +1,18 @@
 {
   "repo": "trustabl/trustabl-rules",
   "unit": "cumulative_release_downloads",
-  "baseline_date": "2026-09-04",
   "history": [
     {
       "date": "2026-09-04",
-      "bundles": 536,
-      "statements": 15,
+      "bundles": 539,
+      "statements": 17,
       "other": 0,
-      "total": 551,
+      "total": 556,
       "since_baseline": {
         "bundles": 0,
         "total": 0
       }
     }
-  ]
+  ],
+  "baseline_date": "2026-09-04"
 }

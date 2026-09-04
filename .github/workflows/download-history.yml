@@ -127,14 +127,24 @@ jobs:
               json.dump(data, f, indent=2); f.write("\n")
 
           # Shields endpoint for the README badge, derived from the newest point so
-          # the badge and the series can never disagree. Reads bundles, not total:
-          # statement.json is cache-expiry noise and would inflate the headline.
+          # the badge and the series can never disagree.
+          #
+          # Shows the delta since the baseline, NOT the cumulative total. The
+          # cumulative figure includes pulls predating this tracker and cannot be
+          # reset (download_count is server-side and read-only), so the delta is
+          # the only number that answers "how much is it used now".
+          #
+          # Reads bundles, not total: statement.json is cache-expiry noise and
+          # moves by more than one per pull, so it would inflate the headline.
           latest = series[-1]
+          delta  = latest["since_baseline"]["bundles"]
+          bd     = datetime.date.fromisoformat(base["date"])
+          pretty = "%d %s %d" % (bd.day, bd.strftime("%b"), bd.year)
           os.makedirs(os.path.dirname(badge), exist_ok=True)
           with open(badge, "w") as f:
               json.dump({"schemaVersion": 1,
-                         "label": "rule downloads",
-                         "message": str(latest["bundles"]),
+                         "label": "downloads",
+                         "message": "+%d since %s" % (delta, pretty),
                          "color": "brightgreen"}, f)
               f.write("\n")
 
