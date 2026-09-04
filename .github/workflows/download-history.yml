@@ -10,13 +10,26 @@ name: Download history
 #
 # They are NOT equivalent signals, so they are recorded separately.
 #
-#   bundle.tar.gz   downloaded whenever the client does not already hold that
-#                   digest - a first run, a new rules release, or ANY run on a
-#                   machine with no cache. CI runners are ephemeral, so a repo
-#                   scanning on every push downloads it every time. Read this as
-#                   "rule pulls", never as "users".
-#   statement.json  cached for its 30-day validity window, so it tracks cache
-#                   expiries rather than scans and undercounts heavily.
+#   bundle.tar.gz   fetched when the client does not already hold that digest -
+#                   a first run, a new rules release, or a run on a machine with
+#                   no cache. CI runners are ephemeral, so a repo scanning on
+#                   every push fetches it each time. Read this as "rule pulls",
+#                   never as "users".
+#   statement.json  the channel pointer, cached for its 30-day validity window,
+#                   so it tracks cache expiries rather than scans. It also moves
+#                   by more than one per pull (measured: +2), so it is recorded
+#                   but deliberately kept out of the badge.
+#
+# download_count is LAGGED AND BATCHED, so never read it as live. Measured
+# 2026-09-04 against a real engine (v0.1.7): several cold-cache pulls each read
+# back as no change for minutes, then landed together as a single +3 jump. A
+# reading taken right after a scan will understate; the same reading minutes
+# later corrects itself.
+#
+# The practical consequence: this workflow cannot be smoke-tested by scanning
+# and immediately re-running it. A flat point is not evidence of zero pulls, and
+# a day boundary can push a pull into the following day's point. The weekly
+# trend is the honest read; a single point is not.
 #
 # GitHub exposes only the CURRENT download_count with no history, so we record one
 # dated point per run and commit it. Same-day reruns overwrite that day's point.
