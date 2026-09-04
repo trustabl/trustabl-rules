@@ -21,6 +21,7 @@ env:
 # rule-count badge. PR runs never write.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   validate:
@@ -73,10 +74,15 @@ jobs:
           count=$(printf '%s' "$out" | sed -n 's/.*, \([0-9][0-9]*\) rule(s) valid.*/\1/p')
           echo "count=$count" >> "$GITHUB_OUTPUT"
 
-      # The rule count used to be hardcoded in three places and disagreed with
-      # reality in all three (206 badge / 206 prose / 185+ prose, actual 204).
-      # Generate it from the validator's own output so there is one source and
-      # it cannot go stale; shields.io reads it as an endpoint badge.
+      # The rule count was hardcoded in three places and disagreed with reality in
+      # all three (206 badge / 206 prose / 185+ prose, actual 204). It is generated
+      # from the validator's own output instead, so there is one source and it
+      # cannot go stale. shields.io reads badges/rules.json as an endpoint badge.
+      #
+      # This lands via a PR rather than a direct push. main is protection-gated, and
+      # the earlier direct-push version failed silently: it committed the right
+      # number, could not push, and the `|| warning` left the job green while the
+      # badge sat stale. A PR cannot fail quietly.
       - name: Refresh the rule-count badge
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         working-directory: rules
@@ -86,14 +92,24 @@ jobs:
           mkdir -p badges
           printf '{"schemaVersion":1,"label":"rules","message":"%s","color":"brightgreen"}\n' "$n" \
             > badges/rules.json
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add badges/rules.json
-          if git diff --staged --quiet; then
-            echo "rule count unchanged at $n"
-          else
-            git commit -m "chore(badges): rule count -> $n"
-            # ponytail: non-fatal. If main is branch-protected the badge keeps
-            # its last value instead of reddening every push to main.
-            git push || echo "::warning::badge refresh could not push (protected main?)"
-          fi
+
+      - name: Open or update the badge PR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: rules
+          add-paths: badges/rules.json
+          branch: chore/rule-count-badge
+          base: main
+          commit-message: "chore(badges): rule count -> ${{ steps.validate.outputs.count }}"
+          title: "chore(badges): rule count -> ${{ steps.validate.outputs.count }}"
+          body: |
+            Regenerated from `trustabl rules validate`, which reported
+            **${{ steps.validate.outputs.count }}** rules on this commit.
+
+            Updates `badges/rules.json`, the shields endpoint the README badge
+            reads. No-ops when the count is unchanged. Safe to merge.
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          delete-branch: false
