@@ -112,10 +112,23 @@ jobs:
                        "other": other, "total": total}
           series = [hist[d] for d in sorted(hist)]
 
-          base = series[0]
+          # Releases can be pruned, which lowers the cumulative sum. Left alone the
+          # delta would go negative, and clamping alone would freeze the badge at
+          # +0 until new pulls exceeded whatever was deleted - silently wrong for
+          # weeks. So on a drop, re-baseline to the current point: counting
+          # resumes from zero immediately.
+          #
+          # The baseline is STICKY - read back from the file, not taken as
+          # series[0]. Recomputing it from series[0] would re-detect the same old
+          # prune on every later run and re-baseline to the newest point each
+          # time, pinning the badge at +0 permanently.
+          base = next((p for p in series if p["date"] == data.get("baseline_date")),
+                      series[0])
+          if series[-1]["bundles"] < base["bundles"]:
+              base = series[-1]
           for p in series:
-              p["since_baseline"] = {"bundles": p["bundles"] - base["bundles"],
-                                     "total":   p["total"]   - base["total"]}
+              p["since_baseline"] = {"bundles": max(0, p["bundles"] - base["bundles"]),
+                                     "total":   max(0, p["total"]   - base["total"])}
 
           data["repo"]          = repo
           data["unit"]          = "cumulative_release_downloads"
