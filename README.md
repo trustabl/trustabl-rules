@@ -2,6 +2,12 @@
   <img src="https://raw.githubusercontent.com/trustabl/trustabl/main/assets/banner-rules.png" alt="Trustabl detection rules — the reliability and safety ruleset for AI agent SDKs" width="100%">
 </p>
 
+<p align="center">
+  <a href="https://github.com/trustabl/trustabl-rules/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrustabl%2Ftrustabl-rules%2Fmain%2Fbadges%2Frules.json" alt="Detection rule count"></a>
+  <a href="https://github.com/trustabl/trustabl-rules/releases"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Ftrustabl%2Ftrustabl-rules%2Fmain%2Fbadges%2Fdownloads.json" alt="Rule bundle downloads"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
+</p>
+
 The detection rule packs the Trustabl scanner reads at scan time. Apache-2.0,
 resolved by the engine on every scan — the engine ships with **no embedded
 rules**. Looking for the threat model and rationale behind each rule? That's

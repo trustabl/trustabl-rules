@@ -1,0 +1,165 @@
+name: Download history
+
+# Weekly snapshot of trustabl/trustabl-rules cumulative release-asset downloads,
+# plus the shields endpoint the README badge reads.
+#
+# What this actually measures. The engine resolves rules over two release assets:
+#
+#   channel-<name>/statement.json   the signed channel pointer
+#   bundle-<digest>/bundle.tar.gz   the rule bundle itself
+#
+# They are NOT equivalent signals, so they are recorded separately.
+#
+#   bundle.tar.gz   downloaded whenever the client does not already hold that
+#                   digest - a first run, a new rules release, or ANY run on a
+#                   machine with no cache. CI runners are ephemeral, so a repo
+#                   scanning on every push downloads it every time. Read this as
+#                   "rule pulls", never as "users".
+#   statement.json  cached for its 30-day validity window, so it tracks cache
+#                   expiries rather than scans and undercounts heavily.
+#
+# GitHub exposes only the CURRENT download_count with no history, so we record one
+# dated point per run and commit it. Same-day reruns overwrite that day's point.
+# The first point is the baseline; every later point carries `since_baseline`.
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'       # weekly, Mondays 05:00 UTC
+  workflow_dispatch:           # run on demand to add a point now
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      # Checking out main (not the snapshot branch) is what keeps the branch from
+      # drifting: create-pull-request commits onto this fresh main and updates the
+      # branch to match, so every run resets it to main + the newest snapshot.
+      # Nothing accumulates on the branch across merges.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Record downloads and refresh the badge
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_REPO: trustabl/trustabl-rules
+          HISTORY_FILE: .github/stats/download-history.json
+          BADGE_FILE: badges/downloads.json
+        run: |
+          python - <<'PY'
+          import json, os, urllib.request, datetime
+
+          repo   = os.environ["TARGET_REPO"]
+          path   = os.environ["HISTORY_FILE"]
+          badge  = os.environ["BADGE_FILE"]
+          token  = os.environ.get("GITHUB_TOKEN", "")
+
+          def api(url):
+              req = urllib.request.Request(url)
+              req.add_header("Accept", "application/vnd.github+json")
+              req.add_header("X-GitHub-Api-Version", "2022-11-28")
+              req.add_header("User-Agent", "trustabl-rules-download-history")
+              if token:
+                  req.add_header("Authorization", "Bearer " + token)
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return json.load(r)
+
+          bundles = statements = other = 0
+          page = 1
+          while True:
+              rels = api("https://api.github.com/repos/%s/releases?per_page=100&page=%d" % (repo, page))
+              if not rels:
+                  break
+              for rel in rels:
+                  for a in rel.get("assets", []):
+                      n, name = a.get("download_count", 0), a.get("name", "")
+                      if name == "bundle.tar.gz":     bundles    += n
+                      elif name == "statement.json":  statements += n
+                      else:                           other      += n
+              if len(rels) < 100:
+                  break
+              page += 1
+
+          total = bundles + statements + other
+          day   = datetime.date.today().isoformat()   # UTC on the runner
+
+          if os.path.exists(path):
+              with open(path) as f:
+                  data = json.load(f)
+          else:
+              data = {"repo": repo, "unit": "cumulative_release_downloads", "history": []}
+
+          hist = {p["date"]: p for p in data.get("history", [])}
+          hist[day] = {"date": day, "bundles": bundles, "statements": statements,
+                       "other": other, "total": total}
+          series = [hist[d] for d in sorted(hist)]
+
+          base = series[0]
+          for p in series:
+              p["since_baseline"] = {"bundles": p["bundles"] - base["bundles"],
+                                     "total":   p["total"]   - base["total"]}
+
+          data["repo"]          = repo
+          data["unit"]          = "cumulative_release_downloads"
+          data["baseline_date"] = base["date"]
+          data["history"]       = series
+
+          os.makedirs(os.path.dirname(path), exist_ok=True)
+          with open(path, "w") as f:
+              json.dump(data, f, indent=2); f.write("\n")
+
+          # Shields endpoint for the README badge, derived from the newest point so
+          # the badge and the series can never disagree. Reads bundles, not total:
+          # statement.json is cache-expiry noise and would inflate the headline.
+          latest = series[-1]
+          os.makedirs(os.path.dirname(badge), exist_ok=True)
+          with open(badge, "w") as f:
+              json.dump({"schemaVersion": 1,
+                         "label": "rule downloads",
+                         "message": str(latest["bundles"]),
+                         "color": "brightgreen"}, f)
+              f.write("\n")
+
+          print("%s: bundles=%d statements=%d total=%d (since %s: +%d)"
+                % (day, bundles, statements, total, base["date"],
+                   latest["since_baseline"]["bundles"]))
+          PY
+
+      # main is protection-gated, so this lands via a PR you merge by hand.
+      # ONE rolling branch is reused and force-updated onto current main each run,
+      # so after you merge, the next run rebuilds it from the merged main rather
+      # than replaying old commits. No divergence to clean up.
+      - name: Open or update the snapshot PR
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          add-paths: |
+            .github/stats/download-history.json
+            badges/downloads.json
+          branch: chore/rules-download-history
+          base: main
+          commit-message: "chore: record rules download snapshot"
+          title: "chore: weekly rules download snapshot"
+          body: |
+            Automated weekly snapshot of cumulative release-asset downloads, plus
+            the shields endpoint the README badge reads.
+
+            `bundles` counts pulls of `bundle.tar.gz` — the rule bundle itself.
+            A pull happens on a first run, on a new rules release, and on **any**
+            run with no local cache. CI runners are ephemeral, so a repo scanning
+            on every push contributes one per run. Read it as rule pulls, not users.
+
+            `statements` counts `statement.json`, the channel pointer, cached for
+            its 30-day window — so it undercounts scans by design.
+
+            `since_baseline` is what arrived after tracking started.
+
+            Safe to merge.
+          author: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          committer: "github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>"
+          delete-branch: false
